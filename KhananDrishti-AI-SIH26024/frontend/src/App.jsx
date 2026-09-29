@@ -30,6 +30,7 @@ import {
 import KhananDrishtiMap from "./KhananDrishtiMap";
 import KhananDrishtiAssistant from "./KhananDrishtiAssistant";
 import { api } from "./services/api";
+import { buildClientAIInsights, buildClientStats } from "./services/localAiEngine";
 import "./App.css";
 
 const demoRecords = [
@@ -138,8 +139,9 @@ function App() {
     }
   });
   const [records, setRecords] = useState(demoRecords);
-  const [stats, setStats] = useState(null);
-  const [aiInsights, setAiInsights] = useState(null);
+  const [stats, setStats] = useState(() => buildClientStats(demoRecords));
+  const [aiInsights, setAiInsights] = useState(() => buildClientAIInsights(demoRecords));
+  const [backendLive, setBackendLive] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [apiError, setApiError] = useState("");
   const [online, setOnline] = useState(navigator.onLine);
@@ -161,15 +163,45 @@ function App() {
   }, []);
 
   const refreshData = async () => {
-    const results = await Promise.allSettled([api.getIssues(), api.getStats(), api.getAIInsights()]);
-    const [issueResult, statResult, aiResult] = results;
-    let hadCoreError = false;
-    if (issueResult.status === "fulfilled" && Array.isArray(issueResult.value)) setRecords(issueResult.value);
-    else hadCoreError = true;
-    if (statResult.status === "fulfilled" && statResult.value) setStats(statResult.value);
-    if (aiResult.status === "fulfilled" && aiResult.value) setAiInsights(aiResult.value);
-    if (!hadCoreError) setApiError("");
-    else setApiError(online ? issueResult.reason?.message || "Unable to reach the governance backend." : "You are offline. Showing the cached governance view.");
+    const results = await Promise.allSettled([
+      api.health(),
+      api.getIssues("limit=1000"),
+      api.getStats(),
+      api.getAIInsights()
+    ]);
+
+    const [healthResult, issueResult, statResult, aiResult] = results;
+    const liveRecords = issueResult.status === "fulfilled" && Array.isArray(issueResult.value)
+      ? issueResult.value
+      : records;
+    const hasLiveData = issueResult.status === "fulfilled" || statResult.status === "fulfilled" || aiResult.status === "fulfilled" || healthResult.status === "fulfilled";
+
+    setBackendLive(hasLiveData);
+
+    if (issueResult.status === "fulfilled" && Array.isArray(issueResult.value)) {
+      setRecords(issueResult.value);
+    }
+
+    if (statResult.status === "fulfilled" && statResult.value) {
+      setStats(statResult.value);
+    } else {
+      setStats(buildClientStats(liveRecords));
+    }
+
+    if (aiResult.status === "fulfilled" && aiResult.value) {
+      setAiInsights(aiResult.value);
+    } else {
+      setAiInsights(buildClientAIInsights(liveRecords));
+    }
+
+    const failedCalls = results.filter((result) => result.status === "rejected").length;
+    if (failedCalls === 0) {
+      setApiError("");
+    } else if (hasLiveData) {
+      setApiError("Some live services are unavailable. KhananDrishti AI is using live data where available and local analytics as a fallback.");
+    } else {
+      setApiError("The live backend is waking up or temporarily unavailable. Showing the built-in governance demo dataset until it responds.");
+    }
   };
 
   useEffect(() => {
@@ -298,8 +330,8 @@ function App() {
         </div>
 
         <div className="topbar-actions">
-          <span className={`connection-pill ${online ? "online" : "offline"}`}>
-            {online ? <Zap size={13} /> : <CloudOff size={13} />} {online ? "Online" : "Offline"}
+          <span className={`connection-pill ${backendLive ? "online" : "offline"}`}>
+            {backendLive ? <Zap size={13} /> : <CloudOff size={13} />} {backendLive ? "Backend live" : online ? "Analytics fallback" : "Offline"}
           </span>
           <button className="icon-btn" onClick={() => setTheme((value) => value === "dark" ? "light" : "dark")} aria-label="Toggle theme">
             {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
@@ -701,61 +733,93 @@ function ReportForm({ user, records, addRecord, setPage }) {
 
 
 function AICommandCenter({ insights, records, setPage, openRecord }) {
-  if (!insights) {
-    return (
-      <main className="page-wrap">
-        <section className="page-heading"><div><span className="eyebrow">KHANANDRISHTI AI</span><h1>AI Command Center</h1><p>Loading governance intelligence from the live dataset.</p></div></section>
-        <div className="data-card empty-state"><BrainCircuit size={42} /><h2>AI engine warming up</h2><p>Connect the backend to generate predictive risk, anomaly and recurring-pattern insights.</p></div>
-      </main>
-    );
-  }
+  const liveInsights = insights || buildClientAIInsights(records);
+  const topPredictions = liveInsights.predictions || [];
+  const mineIntel = liveInsights.mineIntelligence || [];
+  const recommendations = liveInsights.recommendations || [];
+  const anomalies = liveInsights.anomalies || [];
+  const recurring = liveInsights.recurringPatterns || [];
+  const summary = liveInsights.summary || {};
+  const riskIndex = Number(liveInsights.aiRiskIndex || 0);
+  const activeRecords = records.filter((record) => !["Resolved", "Closed"].includes(record.status));
+  const severityCounts = [
+    ["Critical", activeRecords.filter((r) => r.priority === "Critical").length],
+    ["High", activeRecords.filter((r) => r.priority === "High").length],
+    ["Medium", activeRecords.filter((r) => r.priority === "Medium").length],
+    ["Low", activeRecords.filter((r) => r.priority === "Low").length]
+  ];
+  const maxSeverity = Math.max(1, ...severityCounts.map(([, value]) => value));
+  const gauge = Math.max(0, Math.min(100, riskIndex));
+  const circumference = 2 * Math.PI * 62;
+  const dashOffset = circumference * (1 - gauge / 100);
 
-  const topPredictions = insights.predictions || [];
-  const mineIntel = insights.mineIntelligence || [];
-  const recommendations = insights.recommendations || [];
-  const anomalies = insights.anomalies || [];
-  const recurring = insights.recurringPatterns || [];
-  
   return (
     <main className="page-wrap">
-      <section className="page-heading ai-heading">
-        <div><span className="eyebrow"><BrainCircuit size={14} /> KHANANDRISHTI AI ENGINE · {insights.modelMode === "hybrid" ? "HYBRID MODE" : "ANALYTICS MODE"}</span><h1>AI Command Center</h1><p>Explainable intelligence for mine safety, compliance, operations and field governance.</p></div>
-        <div className="ai-engine-badge"><Sparkles size={15} /><strong>LIVE</strong><span>evidence-linked signals</span></div>
+      <section className="ai-command-hero">
+        <div className="ai-command-mark"><img src="/khanandrishti-ai-icon.png" alt="KhananDrishti AI" /></div>
+        <div className="ai-command-copy"><span className="eyebrow"><BrainCircuit size={14} /> AI GOVERNANCE INTELLIGENCE</span><h1>Command center for mine risk</h1><p>AI converts field records, priority, due-date pressure, recurring failures and operational measurements into explainable review signals.</p><div className="ai-mode-row"><span className="ai-live-dot" /> {liveInsights.modelMode === "hybrid" ? "hybrid intelligence" : "explainable analytics"}<span>·</span><span>refreshed {formatDate(liveInsights.generatedAt)}</span></div></div>
+        <button className="primary-btn" onClick={() => setPage("report")}>Capture new evidence <ArrowRight size={15} /></button>
       </section>
 
-      <section className="stats-row ai-stats">
-        <DashboardStat icon={<BrainCircuit />} label="AI risk index" value={`${insights.aiRiskIndex}/100`} />
-        <DashboardStat icon={<ShieldAlert />} label="Predicted priority" value={topPredictions.length} />
-        <DashboardStat icon={<TrendingUp />} label="Anomaly signals" value={anomalies.length} />
-        <DashboardStat icon={<Bot />} label="Recurring patterns" value={recurring.length} />
+      <section className="ai-overview-grid">
+        <div className="data-card ai-gauge-card">
+          <div className="card-head"><div><span className="eyebrow">AI RISK INDEX</span><h2>Current governance pressure</h2></div><span className="ai-chip">LIVE</span></div>
+          <div className="ai-gauge-wrap">
+            <svg viewBox="0 0 170 170" className="ai-gauge-svg" aria-label={`AI risk index ${gauge} out of 100`}>
+              <circle cx="85" cy="85" r="62" className="ai-gauge-track" />
+              <circle cx="85" cy="85" r="62" className="ai-gauge-progress" strokeDasharray={circumference} strokeDashoffset={dashOffset} />
+            </svg>
+            <div className="ai-gauge-value"><strong>{gauge}</strong><span>/ 100</span><small>{gauge >= 80 ? "high attention" : gauge >= 60 ? "watch" : "stable"}</small></div>
+          </div>
+          <div className="ai-gauge-meta"><span><strong>{summary.highRisk ?? 0}</strong> high-risk open</span><span><strong>{summary.critical ?? 0}</strong> critical</span><span><strong>{summary.overdue ?? 0}</strong> overdue</span></div>
+        </div>
+
+        <div className="data-card ai-queue-card">
+          <div className="card-head"><div><span className="eyebrow">AI ATTENTION QUEUE</span><h2>Review first</h2></div><button className="ghost-btn" onClick={() => setPage("governance")}>Open governance <ArrowRight size={14} /></button></div>
+          <div className="ai-queue-list">
+            {topPredictions.slice(0, 5).map((item, index) => {
+              const record = records.find((r) => (r.id || r.issueId) === item.recordId);
+              return <button className="ai-queue-item" key={item.recordId || index} onClick={() => record && openRecord(record)}><span className="queue-rank">0{index + 1}</span><div><strong>{item.title}</strong><span>{item.mineName} · {item.action}</span></div><b>{item.riskScore}</b></button>;
+            })}
+          </div>
+          {!topPredictions.length && <div className="empty-mini">No open record requires an AI-priority action right now.</div>}
+        </div>
+
+        <div className="data-card ai-distribution-card">
+          <div className="card-head"><div><span className="eyebrow">RISK DISTRIBUTION</span><h2>Open record profile</h2></div></div>
+          <div className="severity-stack">
+            {severityCounts.map(([label, value]) => <div className="severity-row" key={label}><span>{label}</span><div><i style={{ width: `${(value / maxSeverity) * 100}%` }} /></div><strong>{value}</strong></div>)}
+          </div>
+          <div className="ai-stat-inline"><span><b>{summary.total ?? records.length}</b> total</span><span><b>{summary.mines ?? 0}</b> mines</span><span><b>{summary.complianceRate ?? 100}%</b> compliance</span></div>
+        </div>
       </section>
 
       <section className="ai-grid">
         <div className="data-card ai-wide-card">
-          <div className="card-head"><div><span className="eyebrow">PREDICTIVE TRIAGE</span><h2>What AI wants reviewed first</h2></div><button className="ghost-btn" onClick={() => setPage("governance")}>Open records <ArrowRight size={15} /></button></div>
+          <div className="card-head"><div><span className="eyebrow">PREDICTIVE TRIAGE</span><h2>Why the engine is flagging these records</h2></div><span className="small-label">RISK + URGENCY + PATTERN</span></div>
           <div className="ai-prediction-list">
             {topPredictions.slice(0, 6).map((item) => {
-              const record = records.find((r) => r.id === item.recordId);
-              return <button className="ai-prediction" key={item.recordId} onClick={() => record && openRecord(record)}><div className="ai-score"><strong>{item.riskScore}</strong><span>risk</span></div><div className="ai-prediction-body"><strong>{item.title}</strong><span>{item.mineName} · {item.action}</span><small>{item.reasons.join(" · ")}</small></div><ArrowRight size={15} /></button>;
+              const record = records.find((r) => (r.id || r.issueId) === item.recordId);
+              return <button className="ai-prediction" key={item.recordId} onClick={() => record && openRecord(record)}><div className="ai-score"><strong>{item.riskScore}</strong><span>risk</span></div><div className="ai-prediction-body"><strong>{item.title}</strong><span>{item.mineName} · confidence {item.priorityConfidence ?? 0}%</span><small>{(item.reasons || []).join(" · ")}</small></div><ArrowRight size={15} /></button>;
             })}
           </div>
         </div>
-
         <div className="data-card ai-recommendations">
-          <div className="card-head"><div><span className="eyebrow">AI RECOMMENDATIONS</span><h2>Next actions</h2></div></div>
-          {recommendations.map((item, index) => <div className={`ai-recommendation ${item.priority}`} key={`${item.title}-${index}`}><span>{item.priority.toUpperCase()}</span><div><strong>{item.title}</strong><p>{item.detail}</p></div></div>)}
+          <div className="card-head"><div><span className="eyebrow">AI ACTION PLAN</span><h2>Suggested next moves</h2></div></div>
+          {recommendations.slice(0, 5).map((item, index) => <div className={`ai-recommendation ${item.priority}`} key={`${item.title}-${index}`}><span>{item.priority.toUpperCase()}</span><div><strong>{item.title}</strong><p>{item.detail}</p></div></div>)}
+          {!recommendations.length && <div className="empty-mini">No action recommendation is currently triggered.</div>}
         </div>
       </section>
 
       <section className="ai-grid ai-grid-3">
-        <div className="data-card"><div className="card-head"><div><span className="eyebrow">MINE INTELLIGENCE</span><h2>Mine risk posture</h2></div></div><div className="mine-intel-list">{mineIntel.map((mine) => <div className="mine-intel" key={mine.mineId}><div><strong>{mine.mineName}</strong><span>{mine.open} open · {mine.overdue} overdue · {mine.topCategory}</span></div><div className={`mine-status ${mine.status}`}><strong>{mine.averageRisk}</strong><small>{mine.status}</small></div></div>)}</div></div>
-        <div className="data-card"><div className="card-head"><div><span className="eyebrow">ANOMALY DETECTION</span><h2>Signals</h2></div></div>{anomalies.length ? anomalies.slice(0, 5).map((item) => <div className="signal-card" key={item.recordId}><span className={`signal-severity ${String(item.severity).toLowerCase()}`}>{item.severity}</span><div><strong>{item.title}</strong><p>{item.signal}</p></div></div>) : <div className="empty-mini">No strong anomaly signal detected in the current measurements.</div>}</div>
-        <div className="data-card"><div className="card-head"><div><span className="eyebrow">RECURRING PATTERNS</span><h2>Repeat failures</h2></div></div>{recurring.length ? recurring.slice(0, 5).map((item) => <div className="pattern-row" key={`${item.mineId}-${item.category}`}><div><strong>{item.category}</strong><span>{item.mineName}</span></div><strong>{item.occurrences}×</strong></div>) : <div className="empty-mini">No recurring mine-category pattern found.</div>}</div>
+        <div className="data-card"><div className="card-head"><div><span className="eyebrow">MINE INTELLIGENCE</span><h2>AI posture by mine</h2></div></div><div className="mine-intel-list">{mineIntel.slice(0, 6).map((mine) => <div className="mine-intel" key={mine.mineId}><div><strong>{mine.mineName}</strong><span>{mine.open} open · {mine.overdue} overdue · {mine.topCategory}</span></div><div className={`mine-status ${mine.status}`}><strong>{mine.averageRisk}</strong><small>{mine.status}</small></div></div>)}</div></div>
+        <div className="data-card"><div className="card-head"><div><span className="eyebrow">ANOMALY DETECTION</span><h2>Operational signals</h2></div></div>{anomalies.length ? anomalies.slice(0, 5).map((item) => <div className="signal-card" key={`${item.recordId}-${item.title}`}><span className={`signal-severity ${String(item.severity).toLowerCase()}`}>{item.severity}</span><div><strong>{item.title}</strong><p>{item.signal}</p></div></div>) : <div className="empty-mini">No strong anomaly signal is currently detected.</div>}</div>
+        <div className="data-card"><div className="card-head"><div><span className="eyebrow">RECURRING PATTERNS</span><h2>Repeat failures</h2></div></div>{recurring.length ? recurring.slice(0, 5).map((item) => <div className="pattern-row" key={`${item.mineId}-${item.category}`}><div><strong>{item.category}</strong><span>{item.mineName}</span></div><strong>{item.occurrences}×</strong></div>) : <div className="empty-mini">No recurring mine-category pattern with multiple records.</div>}</div>
       </section>
 
       <section className="data-card ai-explainability">
-        <div><span className="eyebrow">EXPLAINABLE AI</span><h2>How the engine reaches its signals</h2><p>Every AI insight is derived from the governance records in the current database. It is designed to support human review, not replace it.</p></div>
-        <div className="explain-grid">{(insights.explainability || []).map((text, index) => <div key={index}><span>0{index + 1}</span><p>{text}</p></div>)}</div>
+        <div><span className="eyebrow">EXPLAINABLE AI</span><h2>Evidence behind every signal</h2><p>The engine uses fields already captured by the governance workflow. That keeps the decision trail visible to authorized reviewers.</p></div>
+        <div className="explain-grid">{(liveInsights.explainability || []).map((text, index) => <div key={index}><span>0{index + 1}</span><p>{text}</p></div>)}</div>
         <div className="ai-actions"><button className="secondary-btn" onClick={() => setPage("report")}>Create field report <ArrowRight size={15} /></button><button className="secondary-btn" onClick={() => setPage("map")}>Inspect GIS hotspots <MapPin size={15} /></button></div>
       </section>
     </main>

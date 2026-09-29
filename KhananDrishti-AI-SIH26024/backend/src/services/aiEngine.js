@@ -256,31 +256,61 @@ function localAnswer(question, records) {
 }
 
 async function callExternalModel(question, records) {
-  if (!process.env.AI_API_KEY || !process.env.AI_API_URL) return null;
-  const endpoint = process.env.AI_API_URL;
-  const model = process.env.AI_MODEL || "default";
+  const apiKey = String(process.env.AI_API_KEY || "").trim();
+  const endpoint = String(process.env.AI_API_URL || "").trim();
+  if (!apiKey || !endpoint || apiKey.startsWith("replace-") || apiKey.startsWith("your-")) return null;
+
+  const model = process.env.AI_MODEL || "openrouter/free";
   const prompt = process.env.AI_SYSTEM_PROMPT || "You are KhananDrishti AI, an explainable governance copilot for coal mine operations. Use only the supplied data. Do not invent regulations, measurements or incidents. Clearly distinguish observations from recommendations.";
-  const body = {
-    model,
-    messages: [
-      { role: "system", content: prompt },
-      { role: "user", content: `Question: ${question}\n\nGovernance data:\n${JSON.stringify(topRecordsContext(records))}` }
-    ],
-    temperature: 0.2
-  };
+  const userPrompt = `Question: ${question}\n\nGovernance data:\n${JSON.stringify(topRecordsContext(records))}`;
+  const isResponsesApi = endpoint.includes("/responses");
+
+  const body = isResponsesApi
+    ? {
+        model,
+        input: [
+          {
+            role: "system",
+            content: [{ type: "input_text", text: prompt }]
+          },
+          {
+            role: "user",
+            content: [{ type: "input_text", text: userPrompt }]
+          }
+        ]
+      }
+    : {
+        model,
+        messages: [
+          { role: "system", content: prompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.2
+      };
 
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.AI_API_KEY}`
+      Authorization: `Bearer ${apiKey}`,
+      ...(endpoint.includes("openrouter.ai") ? {
+        "HTTP-Referer": process.env.AI_HTTP_REFERER || "https://khanandrishti-ai.vercel.app",
+        "X-Title": process.env.AI_X_TITLE || "KhananDrishti AI"
+      } : {})
     },
     body: JSON.stringify(body)
   });
 
-  if (!response.ok) throw new Error(`AI provider returned ${response.status}.`);
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => "");
+    throw new Error(`AI provider returned ${response.status}${errorBody ? `: ${errorBody.slice(0, 240)}` : "."}`);
+  }
+
   const data = await response.json();
-  const text = data?.choices?.[0]?.message?.content || data?.output_text || data?.response;
+  const text = isResponsesApi
+    ? data?.output_text || data?.output?.flatMap((item) => item.content || []).find((item) => item.type === "output_text")?.text
+    : data?.choices?.[0]?.message?.content || data?.output_text || data?.response;
+
   if (!text) throw new Error("AI provider returned no text.");
   return String(text).trim();
 }
