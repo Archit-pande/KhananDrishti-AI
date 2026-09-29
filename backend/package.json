@@ -1,5 +1,5 @@
 {
-  "name": "coal-india-limited-backend",
+  "name": "khanandrishti-ai-backend",
   "version": "1.0.0",
   "private": true,
   "type": "commonjs",
@@ -17,7 +17,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.18.0",
     "morgan": "^1.10.0",
-    "multer": "^2.0.2"
+    "multer": "^2.0.2",
+    "mongodb": "^6.20.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

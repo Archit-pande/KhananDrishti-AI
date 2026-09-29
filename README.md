@@ -1,44 +1,44 @@
-# Coal India Limited
+# KhananDrishti AI
 
-Coal India Limited Smart Mine Governance is a full-stack concept implementation for Smart India Hackathon problem statement SIH26024, **AI-Based Smart Governance and Compliance Monitoring System for Coal Mines**.
+KhananDrishti AI is a Smart India Hackathon SIH26024 concept implementation for **AI-Based Smart Governance and Compliance Monitoring System for Coal Mines**. It is designed to centralize field observations, statutory compliance, inspections, operational reporting, contractor workflows and AI-assisted decision support across mine sites.
 
-The problem statement calls for a centralized governance platform that integrates statutory compliance, inspections, safety observations, production reporting, contractor management, worker activity, regulatory reporting, field reporting, automated workflows and analytics across multiple mines and subsidiaries.
+## AI focus
 
-## What this build contains
-
-- centralized mine governance dashboard
-- compliance, safety, environment, equipment and contractor records
-- geo-tagged field reporting with browser GPS
-- camera/photo evidence capture
-- offline queue for field reports and sync on reconnect
-- Leaflet GIS map for geo-tagged governance records
-- workflow tracking from reported to closed
-- role-based access for field officers, mine officials, corporate managers and regulators
-- risk scoring for governance records
-- statistics for critical, high-risk and overdue records
-- MongoDB GridFS evidence storage so uploads are not dependent on local Render disk
-- responsive web interface
-- rule-based governance assistant with an AI-ready extension point
+- Explainable AI risk index across open governance records
+- Predictive triage that ranks records using priority, due-date pressure and recurring signals
+- Anomaly detection for operational metrics and high-severity risk outliers
+- Recurring violation detection by mine and category
+- Mine-level AI risk posture and compliance intelligence
+- AI-generated action recommendations linked to observable record evidence
+- Natural-language AI copilot backed by live governance data
+- Optional server-side LLM integration through an OpenAI-compatible chat-completions endpoint; the analytics engine remains functional without a provider key
+- Geo-tagged field reporting, camera evidence and offline queue
+- MongoDB GridFS evidence storage
 
 ## Stack
 
 Frontend: React + Vite + Leaflet + lucide-react
 Backend: Node.js + Express + Mongoose + JWT + MongoDB
+AI: Explainable analytics engine + optional OpenAI-compatible LLM endpoint
 Storage: MongoDB + GridFS
 
 ## Local setup
 
 ### backend
 
-Copy `backend/.env.example` to `backend/.env` and set:
+Copy `backend/.env.example` to `backend/.env` and set `MONGODB_URI`, `JWT_SECRET` and `CLIENT_ORIGIN`.
 
-`MONGODB_URI`
+Optional AI variables:
 
-`JWT_SECRET`
+`AI_API_URL`
 
-`CLIENT_ORIGIN`
+`AI_API_KEY`
 
-Then:
+`AI_MODEL`
+
+`AI_SYSTEM_PROMPT`
+
+Then run:
 
 `npm install`
 
@@ -48,68 +48,54 @@ Then:
 
 ### frontend
 
-Copy `frontend/.env.example` to `frontend/.env` and set `VITE_API_URL` to the backend API, for example `http://localhost:5000/api`.
+Copy `frontend/.env.example` to `frontend/.env` and set `VITE_API_URL`, for example `http://localhost:5000/api`.
 
-Then:
+Then run:
 
 `npm install`
 
 `npm run dev`
 
-## Separate production database
+## Production
 
-For the new deployment, use a separate MongoDB database named `coal_india_governance`. It can live in a separate Atlas project named `Coal India Limited` or in the same cluster with a different database name.
+Use a separate MongoDB Atlas project/database for this deployment. The example database name is `khanandrishti_governance`.
 
-Example database path:
+Render backend variables:
 
-`mongodb+srv://<username>:<password>@<cluster>/coal_india_governance?retryWrites=true&w=majority`
-
-Do not run the seed script against the previous project database.
-
-## Render
-
-Set these backend environment variables:
-
-`MONGODB_URI=<new Coal India Limited MongoDB URI>`
+`MONGODB_URI=<new Atlas URI>`
 
 `JWT_SECRET=<long random secret>`
 
 `CLIENT_ORIGIN=https://<your-vercel-domain>`
 
-Use the Render start command:
+Optional: `AI_API_URL`, `AI_API_KEY`, `AI_MODEL`, `AI_SYSTEM_PROMPT`.
 
-`npm start`
-
-Run the seed command once against the new database:
-
-`npm run seed`
-
-## Vercel
-
-Set:
+Vercel frontend variable:
 
 `VITE_API_URL=https://<your-render-service>.onrender.com/api`
 
-Build command:
+Vercel root directory: `frontend`
 
-`npm run build`
+Render root directory: `backend`
 
-Output directory:
+Render build command: `npm install`
 
-`dist`
+Render start command: `npm start`
+
+Run `npm run seed` once against the new database. Never run the seed command against the previous Civic Pulse database.
 
 ## Demo accounts
 
-`field@coalindia.demo` / `Field@123`
+`field@khanandrishti.demo` / `Field@123`
 
-`manager@coalindia.demo` / `Mine@123`
+`manager@khanandrishti.demo` / `Mine@123`
 
-`corporate@coalindia.demo` / `Corporate@123`
+`corporate@khanandrishti.demo` / `Corporate@123`
 
-`regulator@coalindia.demo` / `Regulator@123`
+`regulator@khanandrishti.demo` / `Regulator@123`
 
-Change demo credentials before any real deployment.
-
+Change demo credentials before any non-demo deployment.
 
 ## Prototype notice
-This is a hackathon prototype based on SIH26024. It uses Coal India Limited as the organizational context and branding for the prototype; it is not an official Coal India Limited software product.
+
+This is a hackathon prototype for SIH26024. KhananDrishti AI is a project/platform name used for the prototype and does not claim to be an official government or KhananDrishti AI product.

@@ -9,6 +9,7 @@ const { connectDB } = require("./config/db");
 const issueRoutes = require("./routes/issueRoutes");
 const authRoutes = require("./routes/authRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
+const aiRoutes = require("./routes/aiRoutes");
 const { notFound, errorHandler } = require("./middleware/error");
 
 const app = express();
@@ -36,16 +37,17 @@ app.use(express.json({ limit: "2mb" }));
 app.use(morgan("dev"));
 
 app.get("/", (req, res) => {
-  res.json({ name: "Coal India Limited Governance API", status: "ok" });
+  res.json({ name: "KhananDrishti AI Governance API", status: "ok" });
 });
 
 app.get("/api/health", (req, res) => {
-  res.status(200).json({ status: "ok", service: "coal-india-limited-governance" });
+  res.status(200).json({ status: "ok", service: "khanandrishti-ai-governance" });
 });
 
 app.use("/api/auth", authRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/uploads", uploadRoutes);
+app.use("/api/ai", aiRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
@@ -54,7 +56,7 @@ async function start() {
   try {
     await connectDB();
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Coal India Limited API running on port ${PORT}`);
+      console.log(`KhananDrishti AI API running on port ${PORT}`);
     });
   } catch (error) {
     console.error("Failed to start server:", error.message);

@@ -212,7 +212,7 @@ issueSchema.index({ geoLocation: "2dsphere" });
 
 issueSchema.pre("validate", function (next) {
   if (!this.issueId) {
-    this.issueId = `CIL-${Date.now().toString().slice(-6)}-${Math.floor(
+    this.issueId = `KDAI-${Date.now().toString().slice(-6)}-${Math.floor(
       Math.random() * 900 + 100
     )}`;
   }

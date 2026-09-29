@@ -1,6 +1,6 @@
 [
   {
-    "id": "CIL-26001",
+    "id": "KDAI-26001",
     "mineId": "MINE-001",
     "mineName": "Central Coal Mine",
     "subsidiary": "Central Coal Subsidiary",
@@ -23,7 +23,7 @@
     "dueDate": "2026-10-03"
   },
   {
-    "id": "CIL-26002",
+    "id": "KDAI-26002",
     "mineId": "MINE-001",
     "mineName": "Central Coal Mine",
     "subsidiary": "Central Coal Subsidiary",
@@ -46,7 +46,7 @@
     "dueDate": "2026-09-20"
   },
   {
-    "id": "CIL-26003",
+    "id": "KDAI-26003",
     "mineId": "MINE-001",
     "mineName": "Central Coal Mine",
     "subsidiary": "Central Coal Subsidiary",
@@ -68,7 +68,7 @@
     }
   },
   {
-    "id": "CIL-26004",
+    "id": "KDAI-26004",
     "mineId": "MINE-002",
     "mineName": "Eastern Open Cast Mine",
     "subsidiary": "Eastern Coal Subsidiary",
@@ -90,7 +90,7 @@
     "dueDate": "2026-09-30"
   },
   {
-    "id": "CIL-26005",
+    "id": "KDAI-26005",
     "mineId": "MINE-002",
     "mineName": "Eastern Open Cast Mine",
     "subsidiary": "Eastern Coal Subsidiary",
@@ -112,7 +112,7 @@
     "dueDate": "2026-10-06"
   },
   {
-    "id": "CIL-26006",
+    "id": "KDAI-26006",
     "mineId": "MINE-002",
     "mineName": "Eastern Open Cast Mine",
     "subsidiary": "Eastern Coal Subsidiary",
@@ -135,7 +135,7 @@
     "dueDate": "2026-10-01"
   },
   {
-    "id": "CIL-26007",
+    "id": "KDAI-26007",
     "mineId": "MINE-001",
     "mineName": "Central Coal Mine",
     "subsidiary": "Central Coal Subsidiary",
@@ -159,7 +159,7 @@
     "metricUnit": "% of planned dispatch"
   },
   {
-    "id": "CIL-26008",
+    "id": "KDAI-26008",
     "mineId": "MINE-002",
     "mineName": "Eastern Open Cast Mine",
     "subsidiary": "Eastern Coal Subsidiary",
@@ -182,7 +182,7 @@
     "dueDate": "2026-10-04"
   },
   {
-    "id": "CIL-26009",
+    "id": "KDAI-26009",
     "mineId": "MINE-002",
     "mineName": "Eastern Open Cast Mine",
     "subsidiary": "Eastern Coal Subsidiary",
@@ -208,7 +208,7 @@
     "dueDate": "2026-09-29"
   },
   {
-    "id": "CIL-26010",
+    "id": "KDAI-26010",
     "mineId": "MINE-001",
     "mineName": "Central Coal Mine",
     "subsidiary": "Central Coal Subsidiary",

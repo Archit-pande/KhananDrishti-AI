@@ -20,16 +20,21 @@ import {
   Sun,
   Upload,
   X,
-  Zap
+  Zap,
+  BrainCircuit,
+  Bot,
+  TrendingUp,
+  ShieldAlert,
+  Sparkles
 } from "lucide-react";
-import CILMap from "./CILMap";
-import CILAssistant from "./CILAssistant";
+import KhananDrishtiMap from "./KhananDrishtiMap";
+import KhananDrishtiAssistant from "./KhananDrishtiAssistant";
 import { api } from "./services/api";
 import "./App.css";
 
 const demoRecords = [
   {
-    id: "CIL-26002",
+    id: "KDAI-26002",
     mineId: "MINE-001",
     mineName: "Central Coal Mine",
     subsidiary: "Central Coal Subsidiary",
@@ -48,7 +53,7 @@ const demoRecords = [
     assignedTo: "Environment Manager"
   },
   {
-    id: "CIL-26001",
+    id: "KDAI-26001",
     mineId: "MINE-001",
     mineName: "Central Coal Mine",
     subsidiary: "Central Coal Subsidiary",
@@ -67,7 +72,7 @@ const demoRecords = [
     assignedTo: "Mine Safety Manager"
   },
   {
-    id: "CIL-26004",
+    id: "KDAI-26004",
     mineId: "MINE-002",
     mineName: "Eastern Open Cast Mine",
     subsidiary: "Eastern Coal Subsidiary",
@@ -123,10 +128,10 @@ function formatDate(value) {
 function App() {
   const [page, setPage] = useState("home");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem("coal-india-limited-theme") || "dark");
+  const [theme, setTheme] = useState(() => localStorage.getItem("khanandrishti-ai-theme") || "dark");
   const [user, setUser] = useState(() => {
     try {
-      const saved = localStorage.getItem("coal-india-limited-user");
+      const saved = localStorage.getItem("khanandrishti-ai-user");
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -134,13 +139,14 @@ function App() {
   });
   const [records, setRecords] = useState(demoRecords);
   const [stats, setStats] = useState(null);
+  const [aiInsights, setAiInsights] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [apiError, setApiError] = useState("");
   const [online, setOnline] = useState(navigator.onLine);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem("coal-india-limited-theme", theme);
+    localStorage.setItem("khanandrishti-ai-theme", theme);
   }, [theme]);
 
   useEffect(() => {
@@ -155,14 +161,15 @@ function App() {
   }, []);
 
   const refreshData = async () => {
-    try {
-      const [issueData, statData] = await Promise.all([api.getIssues(), api.getStats()]);
-      if (Array.isArray(issueData)) setRecords(issueData);
-      if (statData) setStats(statData);
-      setApiError("");
-    } catch (error) {
-      setApiError(online ? error?.message || "Unable to reach Coal India Limited backend." : "You are offline. Showing the cached governance view.");
-    }
+    const results = await Promise.allSettled([api.getIssues(), api.getStats(), api.getAIInsights()]);
+    const [issueResult, statResult, aiResult] = results;
+    let hadCoreError = false;
+    if (issueResult.status === "fulfilled" && Array.isArray(issueResult.value)) setRecords(issueResult.value);
+    else hadCoreError = true;
+    if (statResult.status === "fulfilled" && statResult.value) setStats(statResult.value);
+    if (aiResult.status === "fulfilled" && aiResult.value) setAiInsights(aiResult.value);
+    if (!hadCoreError) setApiError("");
+    else setApiError(online ? issueResult.reason?.message || "Unable to reach the governance backend." : "You are offline. Showing the cached governance view.");
   };
 
   useEffect(() => {
@@ -170,7 +177,7 @@ function App() {
   }, [online]);
 
   useEffect(() => {
-    const rawQueue = localStorage.getItem("coal-india-limited-offline-queue");
+    const rawQueue = localStorage.getItem("khanandrishti-ai-offline-queue");
     if (!online || !rawQueue || !user) return;
     let queue;
     try {
@@ -189,7 +196,7 @@ function App() {
           remaining.push(item);
         }
       }
-      localStorage.setItem("coal-india-limited-offline-queue", JSON.stringify(remaining));
+      localStorage.setItem("khanandrishti-ai-offline-queue", JSON.stringify(remaining));
       if (remaining.length !== queue.length) refreshData();
     };
 
@@ -205,15 +212,15 @@ function App() {
       subsidiary: payload.user.subsidiary || "",
       assignedMines: payload.user.assignedMines || []
     };
-    localStorage.setItem("coal-india-limited-token", payload.token);
-    localStorage.setItem("coal-india-limited-user", JSON.stringify(nextUser));
+    localStorage.setItem("khanandrishti-ai-token", payload.token);
+    localStorage.setItem("khanandrishti-ai-user", JSON.stringify(nextUser));
     setUser(nextUser);
     setPage(roleCanManage(nextUser.role) ? "governance" : "dashboard");
   };
 
   const logout = () => {
-    localStorage.removeItem("coal-india-limited-token");
-    localStorage.removeItem("coal-india-limited-user");
+    localStorage.removeItem("khanandrishti-ai-token");
+    localStorage.removeItem("khanandrishti-ai-user");
     setUser(null);
     setSelectedRecord(null);
     setPage("home");
@@ -225,15 +232,15 @@ function App() {
   };
 
   const addRecord = async (record) => {
-    const optimistic = { ...record, id: record.id || `CIL-${Date.now().toString().slice(-6)}` };
+    const optimistic = { ...record, id: record.id || `KDAI-${Date.now().toString().slice(-6)}` };
     setRecords((current) => [optimistic, ...current]);
     setSelectedRecord(optimistic);
     setPage("track");
 
     if (!online) {
-      const queue = JSON.parse(localStorage.getItem("coal-india-limited-offline-queue") || "[]");
+      const queue = JSON.parse(localStorage.getItem("khanandrishti-ai-offline-queue") || "[]");
       queue.push(optimistic);
-      localStorage.setItem("coal-india-limited-offline-queue", JSON.stringify(queue));
+      localStorage.setItem("khanandrishti-ai-offline-queue", JSON.stringify(queue));
       setApiError("Record saved locally and queued for sync when connection returns.");
       return;
     }
@@ -243,8 +250,9 @@ function App() {
       setRecords((current) => current.map((item) => item.id === optimistic.id ? saved : item));
       setSelectedRecord(saved);
       setApiError("");
-      const statData = await api.getStats();
+      const [statData, intelligence] = await Promise.all([api.getStats(), api.getAIInsights()]);
       setStats(statData);
+      setAiInsights(intelligence);
     } catch (error) {
       setApiError(error?.message || "Record could not be saved to the backend.");
     }
@@ -258,7 +266,9 @@ function App() {
       const updated = await api.updateIssue(id, { status });
       setRecords((current) => current.map((record) => record.id === id ? updated : record));
       setSelectedRecord((current) => current && current.id === id ? updated : current);
-      setStats(await api.getStats());
+      const [statData, intelligence] = await Promise.all([api.getStats(), api.getAIInsights()]);
+      setStats(statData);
+      setAiInsights(intelligence);
       setApiError("");
     } catch (error) {
       setRecords(previous);
@@ -274,13 +284,14 @@ function App() {
   return (
     <div className="app-shell">
       <nav className="topbar">
-        <button className="brand" onClick={() => navigate("home")} aria-label="Coal India Limited home">
-          <img src="/cil-logo.svg" alt="Coal India Limited" />
+        <button className="brand" onClick={() => navigate("home")} aria-label="KhananDrishti AI home">
+          <img src="/khanandrishti-ai-logo.png" alt="KhananDrishti AI" />
         </button>
 
         <div className={`nav-links ${mobileOpen ? "open" : ""}`}>
           <button onClick={() => navigate("home")}>Overview</button>
           <button onClick={() => navigate("dashboard")}>Dashboard</button>
+          <button onClick={() => navigate("ai")}>AI Command Center</button>
           <button onClick={() => navigate("report")}>Field Report</button>
           <button onClick={() => navigate("map")}>Live GIS</button>
           {roleCanManage(user?.role) && <button onClick={() => navigate("governance")}>Governance</button>}
@@ -313,15 +324,16 @@ function App() {
       {page === "home" && <Home records={records} stats={stats} setPage={navigate} openRecord={openRecord} />}
       {page === "login" && <Login onLogin={login} setPage={navigate} />}
       {page === "dashboard" && <OperationsDashboard user={user} records={records} stats={stats} setPage={navigate} openRecord={openRecord} />}
+      {page === "ai" && <AICommandCenter insights={aiInsights} records={records} setPage={navigate} openRecord={openRecord} />}
       {page === "report" && <ReportForm user={user} records={records} addRecord={addRecord} setPage={navigate} />}
       {page === "track" && <TrackRecord record={selectedRecord || records[0]} setPage={navigate} />}
-      {page === "map" && <CILMap records={records} theme={theme} />}
+      {page === "map" && <KhananDrishtiMap records={records} theme={theme} />}
       {page === "governance" && roleCanManage(user?.role) && <GovernanceDashboard records={records} user={user} stats={stats} updateStatus={updateStatus} openRecord={openRecord} />}
       {page === "governance" && !roleCanManage(user?.role) && <OperationsDashboard user={user} records={records} stats={stats} setPage={navigate} openRecord={openRecord} />}
 
       <footer className="footer">
         <div>
-          <img src="/cil-logo.svg" alt="Coal India Limited" className="footer-logo" />
+          <img src="/khanandrishti-ai-logo.png" alt="KhananDrishti AI" className="footer-logo" />
           <p>AI-ready governance for safer, more transparent coal mine operations.</p>
         </div>
         <div className="footer-meta">
@@ -331,7 +343,7 @@ function App() {
         </div>
       </footer>
 
-      <CILAssistant records={records} setPage={navigate} />
+      <KhananDrishtiAssistant records={records} setPage={navigate} />
     </div>
   );
 }
@@ -349,7 +361,7 @@ function Home({ records, stats, setPage, openRecord }) {
         <div className="hero-copy">
           <span className="eyebrow"><ShieldCheck size={15} /> SMART COAL MINE GOVERNANCE</span>
           <h1>One governance layer for every mine, inspection and compliance action.</h1>
-          <p>Coal India Limited brings statutory compliance, field inspections, safety observations, contractor workflows and operational signals into one digital control plane.</p>
+          <p>KhananDrishti AI brings statutory compliance, field inspections, safety observations, contractor workflows and operational signals into one digital control plane.</p>
           <div className="hero-actions">
             <button className="primary-btn" onClick={() => setPage("report")}>Start a field report <ArrowRight size={17} /></button>
             <button className="secondary-btn" onClick={() => setPage("map")}>Open live GIS <MapPin size={17} /></button>
@@ -376,6 +388,12 @@ function Home({ records, stats, setPage, openRecord }) {
         </div>
       </section>
 
+      <section className="ai-spotlight">
+        <div className="ai-spotlight-icon"><BrainCircuit size={28} /></div>
+        <div><span className="eyebrow">KHANANDRISHTI AI ENGINE</span><h2>From raw mine records to explainable decisions.</h2><p>Predictive risk ranking, recurring-pattern detection, anomaly signals and an AI copilot are built into the governance workflow.</p></div>
+        <button className="primary-btn" onClick={() => setPage("ai")}>Open AI Command Center <Sparkles size={16} /></button>
+      </section>
+
       <section className="section-block">
         <div className="section-head">
           <div><span className="eyebrow">PRIORITY QUEUE</span><h2>Records that need attention</h2></div>
@@ -387,9 +405,9 @@ function Home({ records, stats, setPage, openRecord }) {
       </section>
 
       <section className="section-block feature-section">
-        <div className="feature-card"><span>01</span><ShieldCheck /><h3>Compliance intelligence</h3><p>Track statutory requirements, recurring failures, due dates and corrective actions from one record.</p></div>
+        <div className="feature-card"><span>01</span><ShieldCheck /><h3>AI compliance intelligence</h3><p>Turn compliance history into risk signals, escalation priorities and explainable recommendations.</p></div>
         <div className="feature-card"><span>02</span><MapPin /><h3>Field-first reporting</h3><p>Capture location, evidence, observations and status from the mine site, including an offline queue.</p></div>
-        <div className="feature-card"><span>03</span><BarChart3 /><h3>Risk-driven oversight</h3><p>Use risk scoring and operational analytics to surface high-priority records across mines and subsidiaries.</p></div>
+        <div className="feature-card"><span>03</span><BarChart3 /><h3>Predictive AI oversight</h3><p>Detect risk patterns, anomalies, recurring failures and due-date pressure with explainable AI signals.</p></div>
       </section>
     </main>
   );
@@ -464,7 +482,7 @@ function GovernanceDashboard({ records, user, stats, updateStatus, openRecord })
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "coal-india-limited-governance-report.csv";
+    link.download = "khanandrishti-ai-governance-report.csv";
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -596,7 +614,7 @@ function ReportForm({ user, records, addRecord, setPage }) {
     canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob((blob) => {
       if (!blob) return setError("Could not capture the image.");
-      const file = new File([blob], `coal-india-limited-evidence-${Date.now()}.jpg`, { type: "image/jpeg" });
+      const file = new File([blob], `khanandrishti-ai-evidence-${Date.now()}.jpg`, { type: "image/jpeg" });
       setEvidence(file);
       setPreview(URL.createObjectURL(file));
       stopCamera();
@@ -616,7 +634,7 @@ function ReportForm({ user, records, addRecord, setPage }) {
 
       await addRecord({
         ...form,
-        id: `CIL-${Date.now().toString().slice(-6)}`,
+        id: `KDAI-${Date.now().toString().slice(-6)}`,
         status: "Reported",
         riskScore: ({ Low: 20, Medium: 40, High: 70, Critical: 90 }[form.priority] || 40) + (["Safety", "Environment", "Compliance"].includes(form.category) ? 8 : 0),
         reportedBy: user.name,
@@ -681,6 +699,69 @@ function ReportForm({ user, records, addRecord, setPage }) {
   );
 }
 
+
+function AICommandCenter({ insights, records, setPage, openRecord }) {
+  if (!insights) {
+    return (
+      <main className="page-wrap">
+        <section className="page-heading"><div><span className="eyebrow">KHANANDRISHTI AI</span><h1>AI Command Center</h1><p>Loading governance intelligence from the live dataset.</p></div></section>
+        <div className="data-card empty-state"><BrainCircuit size={42} /><h2>AI engine warming up</h2><p>Connect the backend to generate predictive risk, anomaly and recurring-pattern insights.</p></div>
+      </main>
+    );
+  }
+
+  const topPredictions = insights.predictions || [];
+  const mineIntel = insights.mineIntelligence || [];
+  const recommendations = insights.recommendations || [];
+  const anomalies = insights.anomalies || [];
+  const recurring = insights.recurringPatterns || [];
+  
+  return (
+    <main className="page-wrap">
+      <section className="page-heading ai-heading">
+        <div><span className="eyebrow"><BrainCircuit size={14} /> KHANANDRISHTI AI ENGINE · {insights.modelMode === "hybrid" ? "HYBRID MODE" : "ANALYTICS MODE"}</span><h1>AI Command Center</h1><p>Explainable intelligence for mine safety, compliance, operations and field governance.</p></div>
+        <div className="ai-engine-badge"><Sparkles size={15} /><strong>LIVE</strong><span>evidence-linked signals</span></div>
+      </section>
+
+      <section className="stats-row ai-stats">
+        <DashboardStat icon={<BrainCircuit />} label="AI risk index" value={`${insights.aiRiskIndex}/100`} />
+        <DashboardStat icon={<ShieldAlert />} label="Predicted priority" value={topPredictions.length} />
+        <DashboardStat icon={<TrendingUp />} label="Anomaly signals" value={anomalies.length} />
+        <DashboardStat icon={<Bot />} label="Recurring patterns" value={recurring.length} />
+      </section>
+
+      <section className="ai-grid">
+        <div className="data-card ai-wide-card">
+          <div className="card-head"><div><span className="eyebrow">PREDICTIVE TRIAGE</span><h2>What AI wants reviewed first</h2></div><button className="ghost-btn" onClick={() => setPage("governance")}>Open records <ArrowRight size={15} /></button></div>
+          <div className="ai-prediction-list">
+            {topPredictions.slice(0, 6).map((item) => {
+              const record = records.find((r) => r.id === item.recordId);
+              return <button className="ai-prediction" key={item.recordId} onClick={() => record && openRecord(record)}><div className="ai-score"><strong>{item.riskScore}</strong><span>risk</span></div><div className="ai-prediction-body"><strong>{item.title}</strong><span>{item.mineName} · {item.action}</span><small>{item.reasons.join(" · ")}</small></div><ArrowRight size={15} /></button>;
+            })}
+          </div>
+        </div>
+
+        <div className="data-card ai-recommendations">
+          <div className="card-head"><div><span className="eyebrow">AI RECOMMENDATIONS</span><h2>Next actions</h2></div></div>
+          {recommendations.map((item, index) => <div className={`ai-recommendation ${item.priority}`} key={`${item.title}-${index}`}><span>{item.priority.toUpperCase()}</span><div><strong>{item.title}</strong><p>{item.detail}</p></div></div>)}
+        </div>
+      </section>
+
+      <section className="ai-grid ai-grid-3">
+        <div className="data-card"><div className="card-head"><div><span className="eyebrow">MINE INTELLIGENCE</span><h2>Mine risk posture</h2></div></div><div className="mine-intel-list">{mineIntel.map((mine) => <div className="mine-intel" key={mine.mineId}><div><strong>{mine.mineName}</strong><span>{mine.open} open · {mine.overdue} overdue · {mine.topCategory}</span></div><div className={`mine-status ${mine.status}`}><strong>{mine.averageRisk}</strong><small>{mine.status}</small></div></div>)}</div></div>
+        <div className="data-card"><div className="card-head"><div><span className="eyebrow">ANOMALY DETECTION</span><h2>Signals</h2></div></div>{anomalies.length ? anomalies.slice(0, 5).map((item) => <div className="signal-card" key={item.recordId}><span className={`signal-severity ${String(item.severity).toLowerCase()}`}>{item.severity}</span><div><strong>{item.title}</strong><p>{item.signal}</p></div></div>) : <div className="empty-mini">No strong anomaly signal detected in the current measurements.</div>}</div>
+        <div className="data-card"><div className="card-head"><div><span className="eyebrow">RECURRING PATTERNS</span><h2>Repeat failures</h2></div></div>{recurring.length ? recurring.slice(0, 5).map((item) => <div className="pattern-row" key={`${item.mineId}-${item.category}`}><div><strong>{item.category}</strong><span>{item.mineName}</span></div><strong>{item.occurrences}×</strong></div>) : <div className="empty-mini">No recurring mine-category pattern found.</div>}</div>
+      </section>
+
+      <section className="data-card ai-explainability">
+        <div><span className="eyebrow">EXPLAINABLE AI</span><h2>How the engine reaches its signals</h2><p>Every AI insight is derived from the governance records in the current database. It is designed to support human review, not replace it.</p></div>
+        <div className="explain-grid">{(insights.explainability || []).map((text, index) => <div key={index}><span>0{index + 1}</span><p>{text}</p></div>)}</div>
+        <div className="ai-actions"><button className="secondary-btn" onClick={() => setPage("report")}>Create field report <ArrowRight size={15} /></button><button className="secondary-btn" onClick={() => setPage("map")}>Inspect GIS hotspots <MapPin size={15} /></button></div>
+      </section>
+    </main>
+  );
+}
+
 function TrackRecord({ record, setPage }) {
   if (!record) return <main className="page-wrap"><div className="empty-state"><h2>No governance record selected</h2><button className="primary-btn" onClick={() => setPage("report")}>Create a report</button></div></main>;
   const currentIndex = Math.max(0, statusOrder.indexOf(record.status));
@@ -719,7 +800,7 @@ function Login({ onLogin, setPage }) {
   };
 
   return (
-    <main className="auth-page"><form className="auth-card" onSubmit={submit}><img src="/cil-logo.svg" alt="Coal India Limited" className="auth-logo" /><span className="eyebrow">SECURE GOVERNANCE ACCESS</span><h1>{mode === "login" ? "Welcome to Coal India Limited" : "Create a field account"}</h1><p>{mode === "login" ? "Sign in to access field reporting and governance controls." : "New registrations are created as field officer accounts."}</p>{mode === "register" && <Field label="Name" required><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" /></Field>}<Field label="Email" required><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" /></Field><Field label="Password" required><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} placeholder="At least 6 characters" /></Field>{error && <div className="form-error"><AlertTriangle size={15} /> {error}</div>}<button className="primary-btn full-btn" disabled={busy}>{busy ? "Working..." : mode === "login" ? "Sign in" : "Create account"} <ArrowRight size={17} /></button><div className="demo-access"><strong>demo access</strong><span>field@coalindia.demo / Field@123</span><span>manager@coalindia.demo / Mine@123</span><span>corporate@coalindia.demo / Corporate@123</span><span>regulator@coalindia.demo / Regulator@123</span></div><button type="button" className="link-btn" onClick={() => { setMode((value) => value === "login" ? "register" : "login"); setError(""); }}>{mode === "login" ? "Create a field account" : "Already have an account? Sign in"}</button><button type="button" className="link-btn" onClick={() => setPage("home")}>← Back to overview</button></form></main>
+    <main className="auth-page"><form className="auth-card" onSubmit={submit}><img src="/khanandrishti-ai-logo.png" alt="KhananDrishti AI" className="auth-logo" /><span className="eyebrow">SECURE GOVERNANCE ACCESS</span><h1>{mode === "login" ? "Welcome to KhananDrishti AI" : "Create a field account"}</h1><p>{mode === "login" ? "Sign in to access field reporting and governance controls." : "New registrations are created as field officer accounts."}</p>{mode === "register" && <Field label="Name" required><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" /></Field>}<Field label="Email" required><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" /></Field><Field label="Password" required><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} placeholder="At least 6 characters" /></Field>{error && <div className="form-error"><AlertTriangle size={15} /> {error}</div>}<button className="primary-btn full-btn" disabled={busy}>{busy ? "Working..." : mode === "login" ? "Sign in" : "Create account"} <ArrowRight size={17} /></button><div className="demo-access"><strong>demo access</strong><span>field@khanandrishti.demo / Field@123</span><span>manager@khanandrishti.demo / Mine@123</span><span>corporate@khanandrishti.demo / Corporate@123</span><span>regulator@khanandrishti.demo / Regulator@123</span></div><button type="button" className="link-btn" onClick={() => { setMode((value) => value === "login" ? "register" : "login"); setError(""); }}>{mode === "login" ? "Create a field account" : "Already have an account? Sign in"}</button><button type="button" className="link-btn" onClick={() => setPage("home")}>← Back to overview</button></form></main>
   );
 }
 

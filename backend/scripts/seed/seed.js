@@ -26,36 +26,36 @@ async function seed() {
   await User.create([
     {
       name: "Field Safety Officer",
-      email: "field@coalindia.demo",
+      email: "field@khanandrishti.demo",
       passwordHash: fieldHash,
       role: "field_officer",
       assignedMines: ["MINE-001", "MINE-002"]
     },
     {
       name: "Mine Operations Manager",
-      email: "manager@coalindia.demo",
+      email: "manager@khanandrishti.demo",
       passwordHash: mineHash,
       role: "mine_official",
       assignedMines: ["MINE-001"]
     },
     {
       name: "Corporate Governance Manager",
-      email: "corporate@coalindia.demo",
+      email: "corporate@khanandrishti.demo",
       passwordHash: corporateHash,
       role: "corporate_manager",
       assignedMines: ["MINE-001", "MINE-002"]
     },
     {
       name: "Regulatory Reviewer",
-      email: "regulator@coalindia.demo",
+      email: "regulator@khanandrishti.demo",
       passwordHash: regulatorHash,
       role: "regulator",
       assignedMines: ["MINE-001", "MINE-002"]
     }
   ]);
 
-  console.log("Coal India Limited database seeded successfully.");
-  console.log("Demo accounts: field@coalindia.demo / Field@123, manager@coalindia.demo / Mine@123, corporate@coalindia.demo / Corporate@123, regulator@coalindia.demo / Regulator@123");
+  console.log("KhananDrishti AI database seeded successfully.");
+  console.log("Demo accounts: field@khanandrishti.demo / Field@123, manager@khanandrishti.demo / Mine@123, corporate@khanandrishti.demo / Corporate@123, regulator@khanandrishti.demo / Regulator@123");
 }
 
 seed()

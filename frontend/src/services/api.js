@@ -1,7 +1,7 @@
 const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/$/, "");
 
 async function request(path, options = {}) {
-  const token = localStorage.getItem("coal-india-limited-token");
+  const token = localStorage.getItem("khanandrishti-ai-token");
   const headers = {
     ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -30,5 +30,7 @@ export const api = {
   getNearbyIssues: (params) => request(`/issues/nearby?${params}`),
   createIssue: (issue) => request("/issues", { method: "POST", body: JSON.stringify(issue) }),
   updateIssue: (id, payload) => request(`/issues/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) }),
-  deleteIssue: (id) => request(`/issues/${encodeURIComponent(id)}`, { method: "DELETE" })
+  deleteIssue: (id) => request(`/issues/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  getAIInsights: () => request("/ai/insights"),
+  askAI: (question) => request("/ai/ask", { method: "POST", body: JSON.stringify({ question }) })
 };
